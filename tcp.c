@@ -51,8 +51,19 @@ void* Server(void *params)
 			perror("Error : Accepting failed");
 			exit(1);
 		}
+		char res[100];
 		n = recv(s, ptr, maxlen, 0);
-		send(s, buffer, n, 0);
+		int fd = open(ptr, 2);
+		if(fd == -1)
+		{
+			strcpy(res, "File requested not found!");
+			send(s, res, strlen(res), 0);
+		}
+		else
+		{
+			n = read(fd, res, strlen(res));
+			send(s, res, n, 0);
+		}
 		close(s);
 	}
 }
@@ -62,43 +73,49 @@ void* Client(void *params)
 	int s,n;
 	char servName[100];
 	int servPort;
-	char string[100];
+	char string[10];
 	int len = 0, maxlen = 256;
 	char buffer[256+1];
 	char* ptr = buffer;
 	struct sockaddr_in servAddr;
 	strcpy(servName, "127.0.0.1");
 	servPort = 6969;
-	while(1)
+	memset(&servAddr, 0, sizeof(servAddr));
+	servAddr.sin_family = AF_INET;
+	inet_pton(AF_INET, servName, &servAddr.sin_addr);
+	servAddr.sin_port = servPort;
+	
+	if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
-		printf("\nEnter a string (Client) (type exit to quit) : ");
-		scanf("%s", string);
-		if(strcmp(string, "exit") == 0)
-			exit(0);
-		memset(&servAddr, 0, sizeof(servAddr));
-		servAddr.sin_family = AF_INET;
-		inet_pton(AF_INET, servName, &servAddr.sin_addr);
-		servAddr.sin_port = servPort;
-		
-		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
-		{
-			perror("\nError : Socket creation failed");
-			exit(1);
-		}
-		
-		if((connect(s, (struct sockaddr*) &servAddr, sizeof(servAddr))) < 0)
-		{
-			perror("\nError : Connection failed");
-			exit(1);
-		}
-		
-		send(s, string, strlen(string), 0);
-		
-		n = recv(s, ptr, maxlen, 0);	
-		buffer[n] = '\0';
-		printf("\n\nThe string from server is %s\n", buffer);
-		close(s);
+		perror("\nError : Socket creation failed");
+		exit(1);
 	}
+	
+	if((connect(s, (struct sockaddr*) &servAddr, sizeof(servAddr))) < 0)
+	{
+		perror("\nError : Connection failed");
+		exit(1);
+	}
+
+	printf("\nEnter the file name : ");
+	scanf("%s", string);
+	send(s, string, sizeof(string), 0);
+	n = recv(s, ptr, maxlen, 0);	
+	ptr[n] = '\0';
+	if(strcmp(buffer, "File requested not found!") == 0)
+	{
+		printf("\nFile not found at the server!\n");
+		exit(1);
+	}
+	int fd = creat(string, 0666);
+	if(fd == -1)
+	{
+		perror("\nFile cannot be created!");
+		exit(1);
+	}
+	write(fd, buffer, n);
+	printf("\nFile has been created!");
+	close(s);
 }
 
 int main()
@@ -120,4 +137,5 @@ int main()
 	pthread_join(client, NULL);
 	pthread_join(server, NULL);
 	pthread_exit(NULL);	
+	printf("\n");
 }		
