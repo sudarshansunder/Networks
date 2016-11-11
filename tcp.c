@@ -23,7 +23,7 @@ void* Server(void *params)
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servAddr.sin_addr.s_addr = inet_addr("10.87.2.88");
 	servAddr.sin_port = 6969;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
@@ -78,7 +78,9 @@ void* Client(void *params)
 	char buffer[256+1];
 	char* ptr = buffer;
 	struct sockaddr_in servAddr;
-	strcpy(servName, "127.0.0.1");
+	printf("\nEnter the server's IP address : ");
+	scanf("%s", string);
+	strcpy(servName, string);
 	servPort = 6969;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
@@ -102,14 +104,25 @@ void* Client(void *params)
 	send(s, string, sizeof(string), 0);
 	n = recv(s, ptr, maxlen, 0);	
 	ptr[n] = '\0';
-	printf("\nReceived from server : %s\n", buffer);
 	if(strcmp(buffer, "File requested not found!") == 0)
 	{
 		printf("\nFile not found at the server!\n");
 		exit(1);
 	}
-	strcat(string, "copy");
-	int fd = creat(string, 0666);
+	int i, j;
+	char fileName[10], ext[5];
+	for(i=0;string[i]!='.';i++)
+	{
+		fileName[i] = string[i];
+	}
+	i++;
+	for(j=0;string[i]!='\0';i++,j++)
+	{
+		ext[j] = string[i];
+	}
+	strcat(fileName, "-copy.");
+	strcat(fileName, ext);	
+	int fd = creat(fileName, 0666);
 	if(fd == -1)
 	{
 		perror("\nFile cannot be created!");
@@ -118,6 +131,7 @@ void* Client(void *params)
 	write(fd, buffer, n);
 	printf("\nFile has been created!");
 	close(s);
+	exit(1);
 }
 
 int main()
