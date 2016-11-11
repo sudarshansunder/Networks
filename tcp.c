@@ -61,7 +61,7 @@ void* Server(void *params)
 		}
 		else
 		{
-			n = read(fd, res, strlen(res));
+			n = read(fd, res, 500);
 			send(s, res, n, 0);
 		}
 		close(s);
@@ -102,11 +102,13 @@ void* Client(void *params)
 	send(s, string, sizeof(string), 0);
 	n = recv(s, ptr, maxlen, 0);	
 	ptr[n] = '\0';
+	printf("\nReceived from server : %s\n", buffer);
 	if(strcmp(buffer, "File requested not found!") == 0)
 	{
 		printf("\nFile not found at the server!\n");
 		exit(1);
 	}
+	strcat(string, "copy");
 	int fd = creat(string, 0666);
 	if(fd == -1)
 	{
