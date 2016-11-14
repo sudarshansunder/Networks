@@ -23,14 +23,14 @@ void* Server(void *params)
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-	servAddr.sin_port = 6969;
+	servAddr.sin_addr.s_addr = inet_addr("192.168.43.163");
+	servAddr.sin_port = 6900;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
 		perror("Error : Listen socket failed");
 		exit(1);
-	}
+	}		
 	
 	if((bind(ls,(struct sockaddr*) &servAddr, sizeof(servAddr))) < 0)
 	{
@@ -81,7 +81,7 @@ void* Client(void *params)
 	printf("\nEnter the server's IP address : ");
 	scanf("%s", string);
 	strcpy(servName, string);
-	servPort = 6969;
+	servPort = 6900;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
 	inet_pton(AF_INET, servName, &servAddr.sin_addr);
