@@ -31,7 +31,7 @@ Host* host_insert(Host* head, char ipAddress[], char macAddress[], char files[][
 	return head;
 }
 
-void host_search(Host *head, char fileName[], char **vals)
+void host_search(Host *head, char fileName[], char vals[][20])
 {
 	int mat = 0;
 	int i,j = 1;
