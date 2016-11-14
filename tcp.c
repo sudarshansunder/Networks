@@ -23,7 +23,7 @@ void* Server(void *params)
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("10.87.2.88");
+	servAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 	servAddr.sin_port = 6969;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
