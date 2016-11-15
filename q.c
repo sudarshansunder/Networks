@@ -39,19 +39,23 @@ int main()
 		perror("\nError : Connection failed");
 		exit(1);
 	}
-
-	printf("\nEnter the file name : ");
-	scanf("%s", string);
-	char sendData[50];
-	sendData[0] = '2';
-	sendData[1] = '\0';
-	strcat(sendData, string);
-	fflush(stdout);
-	send(s, sendData, sizeof(sendData), 0);
-	n = recv(s, ptr, maxlen, 0);	
-	buffer[n] = '\0';
-	printf("\nData from the server is %s", buffer);
-	fflush(stdout);
+	while(1)
+	{
+		printf("\n");
+		printf("\nEnter the file name to list (-1 to stop) : ");
+		scanf("%s", string);
+		if(strcmp(string, "-1") == 0)
+			break;
+		char sendData[50];
+		sendData[0] = '3';
+		sendData[1] = '\0';
+		strcat(sendData, string);
+		send(s, sendData, sizeof(sendData), 0);
+		n = recv(s, ptr, maxlen, 0);	
+		buffer[n] = '\0';
+		printf("\nData from the server is %s", buffer);
+		fflush(stdout);
+	}
 	close(s);
 	exit(1);
 }

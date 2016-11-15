@@ -31,6 +31,16 @@ Host* host_insert(Host* head, char ipAddress[], char macAddress[], char files[][
 	return head;
 }
 
+Host* get_host_from_ip(Host *head, char ip[])
+{
+	while(head)
+	{
+		if(strcmp(head->ipAddress, ip) == 0)
+			return head;
+	}
+	return NULL;
+}
+
 void host_search(Host *head, char fileName[], char vals[][20])
 {
 	int mat = 0;

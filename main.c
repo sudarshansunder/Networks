@@ -9,6 +9,7 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "hosts.h"
+#include "encrypt.h"
 
 /*
 Flags for login, file download, list file
@@ -25,16 +26,26 @@ int loginUser(char buffer[], int n, char pwd[])
 {
 	int i;
 	buffer[n] = '\0';
-	return !strcmp(buffer, pwd);
+	char pass_enc[20];
+	for(i=1;i<n;i++)
+		pass_enc[i-1] = buffer[i];
+	char pass[20];
+	decrypt(pass_enc, pass, n-1);
+	printf("\nDecrypted password at server is %s", pass);
+	fflush(stdout);
+	return !strcmp(pass, pwd);
 }
 
 void downloadFile(Host* head, char buffer[], int n, char data[])
 {
 	int i;
 	char fileName[20];
+	printf("\nValue of n is %d", n);
+	fflush(stdout);
 	for(i=1;i<n;i++)
 		fileName[i-1] = buffer[i];
 	char vals[10][20];
+	fileName[n-1] = '\0';
 	printf("\nFile name is %s", fileName);
 	host_search(head, fileName, vals);
 	int k = vals[0][0] - '0';
@@ -48,15 +59,39 @@ void downloadFile(Host* head, char buffer[], int n, char data[])
 		count += strlen(vals[i]) + 1;
 	}
 	data[count] = '\0';
-	printf("\nData to client is %s\n", data);
-	fflush(stdout);
+}
+
+void listFile(Host* head, char buffer[], int n, char clientIp[], char msg[])
+{
+	int i;
+	char fileName[20];
+	for(i=1;i<n;i++)
+	{
+		fileName[i-1] = buffer[i];
+	}
+	printf("\nFilename is %s", fileName);
+	Host* host = get_host_from_ip(head, clientIp);
+	if(host)
+	{
+		strcpy(host->files[host->numFiles], fileName);
+		host->numFiles++; 
+		strcpy(msg, "File added to host");
+	}
+	else
+	{
+		char files[20][20]; //Temporary
+		strcpy(files[0], fileName);
+		head = host_insert(head, clientIp, "temporary mac", files, 0);
+		strcpy(msg, "New host created and file added");
+	}
+	
 }
 
 int main()
 {
 	Host* head = NULL;
-	char files1[10][20] = {"abc.txt", "def.txt"};
-	char files2[10][20] = {"abd.txt", "defg.txt"};
+	char files1[10][20] = {"abcf.txt", "def.txt"};
+	char files2[10][20] = {"abcd.txt", "defg.txt"};
 	head = host_insert(head, "10", "100", files1, 2);
 	head = host_insert(head, "20", "200", files2, 2);
 	head = host_insert(head, "30", "300", files1, 2);
@@ -67,7 +102,7 @@ int main()
 	int maxlen = sizeof(buffer);
 	int n = 0;
 	int waitSize = 16;
-	char *pwd = "1#trumpkilledharambe";
+	char *pwd = "";
 	struct sockaddr_in servAddr, clntAddr;
 	int clntAddrLen;
 	memset(&servAddr, 0, sizeof(servAddr));
@@ -101,10 +136,15 @@ int main()
 			exit(1);
 		}
 		n = recv(s, ptr, maxlen, 0);
+		buffer[n] = '\0';
 		printf("\nReceived from client : %s\n", buffer);	
-		fflush(stdout);
+		printf("\nValue of n1 is %d", n);
+		fflush(stdout);	
+		char clientAddr[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(clntAddr.sin_addr), clientAddr, INET_ADDRSTRLEN);
+		printf("\nClient's address is %s", clientAddr);
 		int auth;
-		char sendData[100];
+		char sendData[100], msg[20];
 		switch(buffer[0])
 		{
 			case '1' : auth = loginUser(buffer, n, pwd);
@@ -121,10 +161,13 @@ int main()
 					   close(s);
 					   break;
 			case '2' : downloadFile(head, buffer, n, sendData);
+					   printf("\nData to client is %s len = %d\n", sendData, (int) strlen(sendData));
+				       fflush(stdout);
 					   send(s, sendData, strlen(sendData), 0);
 					   close(s);
 					   break;
-			case '3' : //listFile(buffer, n);
+			case '3' : listFile(head, buffer, n, clientAddr, msg);
+					   send(s, msg, strlen(msg), 0);
 					   close(s);
 					   break;
 		}
