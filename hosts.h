@@ -8,73 +8,61 @@ typedef struct Host1
 	struct Host1* next;
 } Host;
 
-Host* createHost(char ipAddress[], char macAddress[], char files[][20], int n) 
+void host_insert(Host head[], int size, char ipAddress[], char macAddress[], char files[][20], int n)
 {
-	Host *h = malloc(sizeof(Host));
-	h->numFiles = n;
+	Host new;
+	strcpy(new.ipAddress, ipAddress);
+	strcpy(new.macAddress, macAddress);
+	new.numFiles = n;
 	int i;
 	for(i=0;i<n;i++)
-		strcpy(h->files[i], files[i]);
-	strcpy(h->ipAddress, ipAddress);
-	strcpy(h->macAddress, macAddress);
-	return h;
+		strcpy(new.files[i], files[0]);
+	head[size++] = new;
 }
 
-Host* host_insert(Host* head, char ipAddress[], char macAddress[], char files[][20], int n)
+int get_host_from_ip(Host head[], int size, char ip[])
 {
-	if(!head)
-		return createHost(ipAddress, macAddress, files, n);
-	Host* temp = head;
-	while(temp->next)
-		temp = temp->next;
-	temp->next = createHost(ipAddress, macAddress, files, n);
-	return head;
-}
-
-Host* get_host_from_ip(Host *head, char ip[])
-{
-	while(head)
+	int i;
+	for(i=0;i<size;i++)
 	{
-		if(strcmp(head->ipAddress, ip) == 0)
-			return head;
-		head = head->next;
+		if(strcmp(head[i].ipAddress, ip) == 0)
+			return i;
 	}
-	return NULL;
+	return -1;
 }
 
-void host_search(Host *head, char fileName[], char vals[][20])
+void host_search(Host head[], int size, char fileName[], char vals[][20])
 {
 	int mat = 0;
 	int i,j = 1;
-	while(head)
+	int s;
+	for(s=0;s<size;s++)
 	{
-		for(i=0;i<head->numFiles;i++) 
+		for(i=0;i<head[s].numFiles;i++) 
 		{
-			if(strcmp(fileName, head->files[i]) == 0)
+			if(strcmp(fileName, head[s].files[i]) == 0)
 			{
 				mat++;
-				strcpy(vals[j], head->ipAddress);
+				strcpy(vals[j], head[s].ipAddress);
 				j++;
 			}
 		}
-		head = head->next;
 	}
 	snprintf (vals[0], sizeof(vals[0]), "%d", mat);
 }
-
-void printList(Host* head)
+//I can ping alan, but he cant ping me. g fucking g how tf is that 
+void printList(Host head[], int size)
 {
 	printf("\n\nLinked list at main is : \n\n");
-	int i = 1;
-	while(head)
+	int i;
+	for(i=0;i<size;i++)
 	{
-		printf("\nHost %d : IP = %s ", i, head->ipAddress);
+		printf("\nHost %d : IP = %s ", i+1, head[i].ipAddress);
 		printf("\nFiles : ");
 		fflush(stdout);
 		int j;
-		for(j=0;j<head->numFiles;j++)
-			printf("%s ", head->files[j]);
-		head = head->next;
+		for(j=0;j<head[i].numFiles;j++)
+			printf("%s ", head[i].files[j]);
 		i++;
 	}
 	fflush(stdout);

@@ -135,7 +135,7 @@ void Server()
 
 void Client()	
 {
-	int auth = 0;
+	int auth = 1;
 	int s,n;
 	char servName[100];
 	int servPort;
@@ -182,14 +182,22 @@ void Client()
 						 sendData[1] = '\0';
 						 strcat(sendData, encString);
 						 send(s, sendData, strlen(sendData), 0);
-						 n = recv(s, buffer, strlen(buffer), 0);
-						 buffer[n] = '\0';
-						 if(strcmp(buffer, "Failur") == 0)
+						 ptr = buffer;
+					 	 int len = 0;
+					 	 while((n = recv(s, ptr, strlen(buffer), 0)) > 0)
+					 	 {		
+					  		 ptr += n;
+					 		 len += n;
+					 	 }
+					 	 buffer[len] = '\0';
+					 	 printf("\nBuffer from server is %s", buffer);
+					 	 fflush(stdout);
+						 if(strcmp(buffer, "Failure") == 0)
 						 {
 						 	printf("\nInvalid password, please try again!");
 						 	auth = 0;
 						 }
-						 else if(strcmp(buffer, "Succes") == 0)
+						 else if(strcmp(buffer, "Success") == 0)
 						 {
 						 	printf("\nLogin successful!");
 						 	auth = 1;
