@@ -71,7 +71,7 @@ void* Server(void *params)
 
 void* Client(void *params)
 {
-	int auth = 1;
+	int auth = 0;
 	int s,n;
 	char servName[100];
 	int servPort;
@@ -115,11 +115,9 @@ void* Client(void *params)
 					 sendData[0] = '1';
 					 sendData[1] = '\0';
 					 strcat(sendData, encString);
-					 printf("\nData sent to server is %s", sendData);
 					 send(s, sendData, strlen(sendData), 0);
 					 n = recv(s, buffer, strlen(buffer), 0);
 					 buffer[n] = '\0';
-					 //printf("\nReceived from server : %s", buffer);
 					 if(strcmp(buffer, "Failur") == 0)
 					 {
 					 	printf("\nInvalid password, please try again!");
@@ -139,7 +137,6 @@ void* Client(void *params)
 					 	sendData[0] = '2';
 					 	sendData[1] = '\0';
 					 	strcat(sendData, string);
-					 	printf("\nData send to server is %s", sendData);
 					 	send(s, sendData, strlen(sendData), 0);
 					 	ptr = buffer;
 					 	int len = 0;
@@ -149,7 +146,14 @@ void* Client(void *params)
 					 		len += n;
 					 	}
 					 	buffer[len] = '\0';
-					 	printf("\nData received from server is %s len = %d", buffer, len);
+					 	if(strcmp(buffer, "0#") == 0)
+					 	{
+					 		printf("\nNo peer has the file you request.");
+					 	}
+					 	else
+					 	{
+					 		//TODO Code to receive files using fragments
+					 	}
 					 }
 					 else
 					 {
@@ -157,7 +161,34 @@ void* Client(void *params)
 					 }
 					 close(s);
 					 break;
-
+			case 3 : if(auth)
+					 {
+					 	printf("\nWhat file would you like to list : ");
+					 	scanf("%s", string);
+					 	int fd = open(string, 2);
+					 	if (fd == -1)
+					 	{
+					 		printf("\nYou don't have the file da bastard");
+					 	}
+					 	else
+					 	{
+					 		close(fd);
+						 	sendData[0] = '3';
+						 	sendData[1] = '\0';
+						 	strcat(sendData, string);
+						 	printf("\nData sent to server is %s", sendData);
+						 	send(s, sendData, strlen(sendData), 0);
+						 	n = recv(s, buffer, strlen(buffer), 0);
+						 	buffer[n] = '\0';
+						 	printf("\nData received from the server is %s", buffer);
+					 	}
+					 }
+					 else
+					 {
+					 	printf("\nYour are not authenticated, please login and try again!");	
+					 }
+					 close(s);
+					 break;
 		}
 	} while(ch != 4);
 	close(s);

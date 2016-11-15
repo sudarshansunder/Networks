@@ -37,6 +37,7 @@ Host* get_host_from_ip(Host *head, char ip[])
 	{
 		if(strcmp(head->ipAddress, ip) == 0)
 			return head;
+		head = head->next;
 	}
 	return NULL;
 }
@@ -59,4 +60,26 @@ void host_search(Host *head, char fileName[], char vals[][20])
 		head = head->next;
 	}
 	snprintf (vals[0], sizeof(vals[0]), "%d", mat);
+}
+
+void printList(Host* head)
+{
+	printf("\n\nLinked list at main is : \n\n");
+	int i = 1;
+	while(head)
+	{
+		printf("\nHost %d : IP = %s ", i, head->ipAddress);
+		printf("\nFiles : ");
+		fflush(stdout);
+		int j;
+		if(strcmp(head->files[0], "") == 0)
+			printf("\nNo files found lel");
+		else
+			printf("\nfiles found lel");
+		for(j=0;j<head->numFiles;j++)
+			printf("%s ", head->files[j]);
+		head = head->next;
+		i++;
+	}
+	fflush(stdout);
 }
