@@ -13,6 +13,7 @@
 
 void downloadFiles(char buffer[], int len, char fileName[])
 {
+	int s;
 	int num = buffer[0] - '0', i;
 	buffer[len-1] = '\0';
 	char **ips;
@@ -23,9 +24,9 @@ void downloadFiles(char buffer[], int len, char fileName[])
 	{
 		struct sockaddr_in peerAddr;
 		memset(&peerAddr, 0, sizeof(peerAddr));
-		servAddr.sin_family = AF_INET;
-		inet_pton(AF_INET, ips[i], &servAddr.sin_addr);
-		servAddr.sin_port = 6900;
+		peerAddr.sin_family = AF_INET;
+		inet_pton(AF_INET, ips[i], &peerAddr.sin_addr);
+		peerAddr.sin_port = 6900;
 		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 		{
 			perror("\nError : Socket creation failed");
@@ -100,8 +101,8 @@ void Server()
 
 		char **strs = str_split(buffer, '#');
 
-		int tot = strs[0] - '0';
-		int part = strs[1] - '1';
+		int tot = strs[0][0] - '0';
+		int part = strs[1][0] - '1';
 		char fileName[20];
 		strcpy(fileName, strs[2]);
 
@@ -143,7 +144,7 @@ void Client()
 	char buffer[256+1];
 	char* ptr = buffer;
 	struct sockaddr_in servAddr;
-	strcpy(servName, "192.168.43.46");
+	strcpy(servName, "192.168.43.47");
 	servPort = 6901;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
