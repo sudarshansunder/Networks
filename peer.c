@@ -10,23 +10,27 @@
 #include <pthread.h>
 #include "encrypt.h"
 #include "utils.h"
+#include <fcntl.h> 
 
 void downloadFiles(char buffer[], int len, char fileName[])
 {
 	int s;
-	int num = buffer[0] - '0', i;
+	int num = buffer[0] - '0' + 1, i;
 	buffer[len-1] = '\0';
 	char **ips;
 	ips = str_split(buffer, '#');
 	char data[256+1];
 	int fd = creat(fileName, 0666);
+	printf("\nDownload files : ");
+	for(i=0;i<num;i++)
+		printf("%s ", ips[i]);
 	for(i=1;i<num;i++)
 	{
 		struct sockaddr_in peerAddr;
 		memset(&peerAddr, 0, sizeof(peerAddr));
 		peerAddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ips[i], &peerAddr.sin_addr);
-		peerAddr.sin_port = 6905;
+		peerAddr.sin_port = 4002;
 		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 		{
 			perror("\nError : Socket creation failed");
@@ -46,10 +50,12 @@ void downloadFiles(char buffer[], int len, char fileName[])
 		sendData[3] = '#';
 		sendData[4] = '\0';
 		strcat(sendData, fileName);
+		printf("\nData send to peer is %s", sendData);
 		send(s, sendData, strlen(sendData), 0);
-		int n = recv(s, data, strlen(data), 0);
+		int n = recv(s, data, 50, 0);
 		data[n] = '\0';
 		write(fd, data, strlen(data));
+		break;
 	}
 }
 
@@ -67,8 +73,8 @@ void Server()
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("192.168.43.163");
-	servAddr.sin_port = 6905;
+	servAddr.sin_addr.s_addr = inet_addr("192.168.43.134");
+	servAddr.sin_port = 4002;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -96,7 +102,7 @@ void Server()
 			exit(1);
 		}
 		
-		n = recv(s, buffer, strlen(buffer), 0);
+		n = recv(s, buffer, strlen(buffer) + 20, 0);
 		buffer[n] = '\0';
 
 		char **strs = str_split(buffer, '#');
@@ -106,10 +112,13 @@ void Server()
 		char fileName[20];
 		strcpy(fileName, strs[2]);
 
-		//Debug statements
-
-		printf("\nTotal parts : %d , Part number %d , File Name %s", tot, part, fileName);
-
+		int i;
+		printf("\nPeer server received : ");
+		for(i=0;i<3;i++)
+		{
+			printf("%s ", strs[i]);
+		}
+		fflush(stdout);
 		int fd = open(fileName, 2);
 
 		if(fd == -1)
@@ -118,16 +127,18 @@ void Server()
 			exit(0);
 		}
 
-		n = read(fd, buffer, strlen(buffer));
+		n = read(fd, buffer, 50);
 		int bpp = n/tot;
+		
 		int fp = bpp * (part - 1);
-		lseek(fd, fp, 0);
 
-		n = read(fd, buffer, bpp);
+		//lseek(fd, fp, 0);
 
 		buffer[n] = '\0';
 
-		send(s, buffer, bpp + 1, 0);
+		printf("\nValue of buffer is %s", buffer);
+
+		send(s, buffer, n, 0);
 
 		close(s);
 	}
@@ -135,7 +146,7 @@ void Server()
 
 void Client()	
 {
-	int auth = 1;
+	int auth = 0;
 	int s,n;
 	char servName[100];
 	int servPort;
@@ -145,7 +156,7 @@ void Client()
 	char* ptr = buffer;
 	struct sockaddr_in servAddr;
 	strcpy(servName, "192.168.43.47");
-	servPort = 6901;
+	servPort = 8000;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
 	inet_pton(AF_INET, servName, &servAddr.sin_addr);
@@ -182,22 +193,17 @@ void Client()
 						 sendData[1] = '\0';
 						 strcat(sendData, encString);
 						 send(s, sendData, strlen(sendData), 0);
-						 ptr = buffer;
-					 	 int len = 0;
-					 	 while((n = recv(s, ptr, strlen(buffer), 0)) > 0)
-					 	 {		
-					  		 ptr += n;
-					 		 len += n;
-					 	 }
-					 	 buffer[len] = '\0';
-					 	 printf("\nBuffer from server is %s", buffer);
-					 	 fflush(stdout);
-						 if(strcmp(buffer, "Failure") == 0)
+					 	 n = recv(s, ptr, strlen(buffer)+1, 0);
+				
+					 	 buffer[n] = '\0';
+						 printf("\nBuffer from server is %s -> %d", buffer,n);
+						 fflush(stdout);
+						 if(strcmp(buffer, "0") == 0)
 						 {
 						 	printf("\nInvalid password, please try again!");
 						 	auth = 0;
 						 }
-						 else if(strcmp(buffer, "Success") == 0)
+						 else if(strcmp(buffer, "1") == 0)
 						 {
 						 	printf("\nLogin successful!");
 						 	auth = 1;
@@ -219,12 +225,9 @@ void Client()
 					 	send(s, sendData, strlen(sendData), 0);
 					 	ptr = buffer;
 					 	int len = 0;
-					 	while((n = recv(s, ptr, strlen(buffer), 0)) > 0)
-					 	{		
-					 		ptr += n;
-					 		len += n;
-					 	}
-					 	buffer[len] = '\0';
+					 	n = recv(s, ptr, strlen(buffer)+50, 0);
+					 	buffer[n] = '\0';
+						printf("Server has sent: %s -> %d",buffer,n);
 					 	if(strcmp(buffer, "0#") == 0)
 					 	{
 					 		printf("\nNo peer has the file you request.");
@@ -257,16 +260,18 @@ void Client()
 						 	sendData[1] = '\0';
 						 	strcat(sendData, string);
 						 	printf("\nData sent to server is %s", sendData);
+							fflush(stdout);
 						 	send(s, sendData, strlen(sendData), 0);
 						 	ptr = buffer;
-					 		int len = 0;
-					 		while((n = recv(s, ptr, strlen(buffer), 0)) > 0)
-					 		{		
-						 		ptr += n;
-					 			len += n;
-					 		}
-					 		buffer[len] = '\0';
-						 	printf("\nData received from the server is %s", buffer);
+					 		n = recv(s, ptr, strlen(buffer)+1, 0);
+					 		buffer[n] = '\0';
+						 	if(strcmp(buffer, "Ne") == 0)
+						 	{
+						 		printf("\nData received from the server is %s", buffer);
+						 		
+						 	}
+						 	
+							fflush(stdout);
 					 	}
 					 }
 					 else
@@ -293,4 +298,4 @@ int main()
 		Client();
 	}
 	printf("\n");
-}			
+}		

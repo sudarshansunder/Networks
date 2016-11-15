@@ -8,20 +8,82 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
-#include "hosts.h"
+#include <sys/mman.h>
 #include "encrypt.h"
 
-/*
-Flags for login, file download, list file
+typedef struct Host1
+{
+	char ipAddress[20], macAddress[30];
+	char files[20][20];
+	int numFiles;
+	struct Host1* next;
+} Host;
 
-	1 - Login
-	2 - Download
-	3 - List
 
-Compile using  
+Host *head[20];
+int *size;
 
+void host_insert(char ipAddress[], char macAddress[], char files[][20], int n)
+{
+	Host new;
+	strcpy(new.ipAddress, ipAddress);
+	strcpy(new.macAddress, macAddress);
+	new.numFiles = n;
+	int i;
+	for(i=0;i<n;i++)
+		strcpy(new.files[i], files[0]);
+	*head[*size] = new;
+	(*size)++;
+}
 
-*/
+int get_host_from_ip(char ip[])
+{
+	int i;
+	for(i=0;i<*size;i++)
+	{
+		fflush(stdout);
+		if(strcmp((*head[i]).ipAddress, ip) == 0)
+		{
+			return i;
+		}
+	}
+	return -1;
+}
+
+void host_search(char fileName[], char vals[][20])
+{
+	int mat = 0;
+	int i,j = 1;
+	int s;
+	for(s=0;s<*size;s++)
+	{
+		for(i=0;i<(*head[s]).numFiles;i++) 
+		{
+			if(strcmp(fileName, (*head[s]).files[i]) == 0)
+			{
+				mat++;
+				strcpy(vals[j], (*head[s]).ipAddress);
+				j++;
+			}
+		}
+	}
+	snprintf (vals[0], sizeof(vals[0]), "%d", mat);
+}
+
+void printList()
+{
+	int i;
+	for(i=0;i<*size;i++)
+	{
+		printf("\nHost %d : IP = %s ", i+1, (*head[i]).ipAddress);
+		printf("\nFiles : ");
+		int j;
+		for(j=0;j<(*head[i]).numFiles;j++)
+			printf("%s ", (*head[i]).files[j]);
+		fflush(stdout);
+	}
+	fflush(stdout);
+}
 
 int loginUser(char buffer[], int n, char pwd[])
 {
@@ -36,7 +98,7 @@ int loginUser(char buffer[], int n, char pwd[])
 	return !strcmp(pass, pwd);
 }
 
-void downloadFile(Host head[], int size, char buffer[], int n, char data[])
+void downloadFile(char buffer[], int n, char data[])
 {
 	int i;
 	char fileName[20];
@@ -44,7 +106,7 @@ void downloadFile(Host head[], int size, char buffer[], int n, char data[])
 		fileName[i-1] = buffer[i];
 	char vals[10][20];	
 	fileName[n-1] = '\0';
-	host_search(head, size, fileName, vals);
+	host_search(fileName, vals);
 	int k = vals[0][0] - '0';
 	data[0] = '\0';
 	int count = 0;
@@ -56,8 +118,7 @@ void downloadFile(Host head[], int size, char buffer[], int n, char data[])
 	}
 	data[count] = '\0';
 }
-
-void listFile(Host head[], int size, char buffer[], int n, char clientIp[], char msg[])
+void listFile(char buffer[], int n, char clientIp[], char msg[])
 {
 	int i;
 	char fileName[20];
@@ -65,31 +126,31 @@ void listFile(Host head[], int size, char buffer[], int n, char clientIp[], char
 	{
 		fileName[i-1] = buffer[i];
 	}
-	int t = get_host_from_ip(head, size,  clientIp);
+	int t = get_host_from_ip(clientIp);
 	if(t != -1)
 	{
-		printf("\nAppended to old host!");
-		fflush(stdout);
-		strcpy(head[t].files[head[t].numFiles], fileName);
-		head[t].numFiles++; 
+		strcpy((*head[t]).files[(*head[t]).numFiles], fileName);
+		(*head[t]).numFiles++; 
 		strcpy(msg, "File added to host");
 	}
 	else
 	{
-		printf("\nCreated a new host!");
-		fflush(stdout);
 		char files[20][20]; //Temporary
 		strcpy(files[0], fileName);
-		host_insert(head, size, clientIp, "temporary mac", files, 1);
+		host_insert(clientIp, "temporary mac", files, 1);
 		strcpy(msg, "New host created and file added");
 	}
 	
 }
 
 int main()
-{
-	Host head[20];
-	int size = 0;
+{	
+	size = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    int i;
+    for(i=0;i<20;i++)
+    	head[i] = mmap(NULL, sizeof(Host), PROT_READ | PROT_WRITE, 
+                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	int ls, s;
 	char buffer[256];
 	char *ptr = buffer;
@@ -102,8 +163,8 @@ int main()
 	int clntAddrLen;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("192.168.43.163");
-	servAddr.sin_port = 6901;
+	servAddr.sin_addr.s_addr = inet_addr("192.168.43.47");
+	servAddr.sin_port = 8000;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -131,7 +192,8 @@ int main()
 				perror("Error : Accepting failed");
 				exit(1);
 			}
-			if(fork() == 0)	{
+			if(fork() == 0)	
+			{
 				n =	recv(s, ptr, maxlen, 0);
 				buffer[n] = '\0';
 				printf("\nReceived from client : %s", buffer);
@@ -160,13 +222,13 @@ int main()
 							   fflush(stdout);
 							   close(s);
 							   break;
-					case '2' : downloadFile(head, size, buffer, n, sendData);
-								printf("\nData send to %s is %s", clientAddr, res);
+					case '2' : downloadFile(buffer, n, sendData);
+								printf("\nData send to %s is %s", clientAddr, sendData);
 								fflush(stdout);
 							   send(s, sendData, strlen(sendData), 0);
 							   close(s);
 							   break;
-					case '3' : listFile(head, size, buffer, n, clientAddr, msg);
+					case '3' : listFile(buffer, n, clientAddr, msg);
 							   printList(head, size);
 							   printf("\nData send to %s is %s", clientAddr, res);
 							   fflush(stdout);
@@ -177,8 +239,8 @@ int main()
 				}
 				printf("\n");
 				fflush(stdout);
-				exit(0);
+				//exit(0);
 			}
 		}
-	}
+		}
 
