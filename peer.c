@@ -9,8 +9,50 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include "encrypt.h"
+#include "utils.h"
 
-void* Server(void *params)
+void downloadFiles(char buffer[], int len, char fileName[])
+{
+	int num = buffer[0] - '0', i;
+	buffer[len-1] = '\0';
+	char **ips;
+	ips = str_split(buffer, '#');
+	char data[256+1];
+	int fd = creat(fileName, 0666);
+	for(i=1;i<num;i++)
+	{
+		struct sockaddr_in peerAddr;
+		memset(&peerAddr, 0, sizeof(peerAddr));
+		servAddr.sin_family = AF_INET;
+		inet_pton(AF_INET, ips[i], &servAddr.sin_addr);
+		servAddr.sin_port = 6900;
+		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
+		{
+			perror("\nError : Socket creation failed");
+			exit(1);
+		}
+
+		if((connect(s, (struct sockaddr*) &peerAddr, sizeof(peerAddr))) < 0)
+		{	
+			perror("\nError : Connection failed");
+			exit(1);
+		}
+
+		char sendData[50];
+		sendData[0] = '0' + num;
+		sendData[1] = '#';
+		sendData[2] = i + '0';
+		sendData[3] = '#';
+		sendData[4] = '\0';
+		strcat(sendData, fileName);
+		send(s, sendData, strlen(sendData), 0);
+		int n = recv(s, data, strlen(data), 0);
+		data[n] = '\0';
+		write(fd, data, strlen(data));
+	}
+}
+
+void Server()
 {
 	int ls, s;
 	char buffer[256];
@@ -24,7 +66,7 @@ void* Server(void *params)
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	servAddr.sin_addr.s_addr = inet_addr("192.168.43.163");
 	servAddr.sin_port = 6900;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
@@ -52,24 +94,45 @@ void* Server(void *params)
 			perror("Error : Accepting failed");
 			exit(1);
 		}
-		char res[100];
-		n = recv(s, ptr, maxlen, 0);
-		int fd = open(ptr, 2);
+		
+		n = recv(s, buffer, strlen(buffer), 0);
+		buffer[n] = '\0';
+
+		char **strs = str_split(buffer, '#');
+
+		int tot = strs[0] - '0';
+		int part = strs[1] - '1';
+		char fileName[20];
+		strcpy(fileName, strs[2]);
+
+		//Debug statements
+
+		printf("\nTotal parts : %d , Part number %d , File Name %s", tot, part, fileName);
+
+		int fd = open(fileName, 2);
+
 		if(fd == -1)
 		{
-			strcpy(res, "File requested not found!");
-			send(s, res, strlen(res), 0);
+			printf("\nCannot open file at peer");
+			exit(0);
 		}
-		else
-		{
-			n = read(fd, res, 500);
-			send(s, res, n, 0);
-		}
+
+		n = read(fd, buffer, strlen(buffer));
+		int bpp = n/tot;
+		int fp = bpp * (part - 1);
+		lseek(fd, fp, 0);
+
+		n = read(fd, buffer, bpp);
+
+		buffer[n] = '\0';
+
+		send(s, buffer, bpp + 1, 0);
+
 		close(s);
 	}
 }
 
-void* Client(void *params)
+void Client()	
 {
 	int auth = 0;
 	int s,n;
@@ -80,7 +143,7 @@ void* Client(void *params)
 	char buffer[256+1];
 	char* ptr = buffer;
 	struct sockaddr_in servAddr;
-	strcpy(servName, "127.0.0.1");
+	strcpy(servName, "192.168.43.46");
 	servPort = 6901;
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
@@ -90,7 +153,6 @@ void* Client(void *params)
 	int ch;
 	do
 	{
-
 		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 		{
 			perror("\nError : Socket creation failed");
@@ -108,25 +170,33 @@ void* Client(void *params)
 		char sendData[50];
 		switch(ch)
 		{
-			case 1 : printf("\nEnter the password : ");
-					 scanf("%s", string);
-					 char encString[20];
-					 encrypt(string, encString, strlen(string));
-					 sendData[0] = '1';
-					 sendData[1] = '\0';
-					 strcat(sendData, encString);
-					 send(s, sendData, strlen(sendData), 0);
-					 n = recv(s, buffer, strlen(buffer), 0);
-					 buffer[n] = '\0';
-					 if(strcmp(buffer, "Failur") == 0)
+			case 1 :
+					 if(!auth)
 					 {
-					 	printf("\nInvalid password, please try again!");
-					 	auth = 0;
+					 	printf("\nEnter the password : ");
+						 scanf("%s", string);
+						 char encString[20];
+						 encrypt(string, encString, strlen(string));
+						 sendData[0] = '1';
+						 sendData[1] = '\0';
+						 strcat(sendData, encString);
+						 send(s, sendData, strlen(sendData), 0);
+						 n = recv(s, buffer, strlen(buffer), 0);
+						 buffer[n] = '\0';
+						 if(strcmp(buffer, "Failur") == 0)
+						 {
+						 	printf("\nInvalid password, please try again!");
+						 	auth = 0;
+						 }
+						 else if(strcmp(buffer, "Succes") == 0)
+						 {
+						 	printf("\nLogin successful!");
+						 	auth = 1;
+						 }
 					 }
-					 else if(strcmp(buffer, "Succes") == 0)
+					 else
 					 {
-					 	printf("\nLogin successful!");
-					 	auth = 1;
+					 	printf("\nAlready logged in bruv");
 					 }
 					 close(s);
 					 break;
@@ -153,7 +223,7 @@ void* Client(void *params)
 					 	else
 					 	{
 					 		//TODO Code to receive files using fragments
-					 		printf("\nRetreive files from %s", buffer)	;
+					 		downloadFiles(buffer, len, string);
 					 	}
 					 }
 					 else
@@ -204,23 +274,14 @@ void* Client(void *params)
 
 int main()
 {
-
-	pthread_t client, server;
-	int res;
-	/*res = pthread_create(&server, NULL, Server, NULL);
-	if(res)
+	int pid = fork();
+	if(pid == 0)
 	{
-		printf("\nProblem in creating server thread!");
-		exit(1);
-	}*/
-	res = pthread_create(&client, NULL, Client, NULL);
-	if(res)
-	{
-		printf("\nProblem in creating client thread!");
-		exit(1);
+		Server();
 	}
-	pthread_join(client, NULL);
-	//pthread_join(server, NULL);
-	pthread_exit(NULL);	
+	else
+	{
+		Client();
+	}
 	printf("\n");
 }		
