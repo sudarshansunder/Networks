@@ -26,7 +26,7 @@ void downloadFiles(char buffer[], int len, char fileName[])
 		memset(&peerAddr, 0, sizeof(peerAddr));
 		peerAddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ips[i], &peerAddr.sin_addr);
-		peerAddr.sin_port = 6900;
+		peerAddr.sin_port = 6905;
 		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 		{
 			perror("\nError : Socket creation failed");
@@ -68,7 +68,7 @@ void Server()
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
 	servAddr.sin_addr.s_addr = inet_addr("192.168.43.163");
-	servAddr.sin_port = 6900;
+	servAddr.sin_port = 6905;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -285,4 +285,4 @@ int main()
 		Client();
 	}
 	printf("\n");
-}		
+}			
