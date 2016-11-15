@@ -72,10 +72,6 @@ void printList(Host* head)
 		printf("\nFiles : ");
 		fflush(stdout);
 		int j;
-		if(strcmp(head->files[0], "") == 0)
-			printf("\nNo files found lel");
-		else
-			printf("\nfiles found lel");
 		for(j=0;j<head->numFiles;j++)
 			printf("%s ", head->files[j]);
 		head = head->next;

@@ -43,6 +43,8 @@ void downloadFile(Host* head, char buffer[], int n, char data[])
 	fflush(stdout);
 	for(i=1;i<n;i++)
 		fileName[i-1] = buffer[i];
+	printf("\nFilename is %s", fileName);
+	fflush(stdout);
 	char vals[10][20];
 	fileName[n-1] = '\0';
 	host_search(head, fileName, vals);
@@ -66,21 +68,18 @@ void listFile(Host** head, char buffer[], int n, char clientIp[], char msg[])
 	{
 		fileName[i-1] = buffer[i];
 	}
-	printf("\nFilename is %s", fileName);
 	Host* host = get_host_from_ip(*head, clientIp);
 	if(host)
 	{
-		printf("\nA host has been found with IP");
 		strcpy(host->files[host->numFiles], fileName);
 		host->numFiles++; 
 		strcpy(msg, "File added to host");
 	}
 	else
 	{
-		printf("\nNo host found with IP. Adding new host.");
 		char files[20][20]; //Temporary
 		strcpy(files[0], fileName);
-		*head = host_insert(*head, clientIp, "temporary mac", files, 0);
+		*head = host_insert(*head, clientIp, "temporary mac", files, 1);
 		strcpy(msg, "New host created and file added");
 	}
 	
@@ -89,11 +88,6 @@ void listFile(Host** head, char buffer[], int n, char clientIp[], char msg[])
 int main()
 {
 	Host* head = NULL;
-	/*char files1[10][20] = {"abcf.txt", "def.txt"};
-	char files2[10][20] = {"abcd.txt", "defg.txt"};
-	head = host_insert(head, "10", "100", files1, 2);
-	head = host_insert(head, "20", "200", files2, 2);
-	head = host_insert(head, "30", "300", files1, 2);*/
 	int ls, s;
 	char buffer[256];
 	char *ptr = buffer;

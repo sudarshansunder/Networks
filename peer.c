@@ -153,6 +153,7 @@ void* Client(void *params)
 					 	else
 					 	{
 					 		//TODO Code to receive files using fragments
+					 		printf("\nRetreive files from %s", buffer)	;
 					 	}
 					 }
 					 else
@@ -178,8 +179,14 @@ void* Client(void *params)
 						 	strcat(sendData, string);
 						 	printf("\nData sent to server is %s", sendData);
 						 	send(s, sendData, strlen(sendData), 0);
-						 	n = recv(s, buffer, strlen(buffer), 0);
-						 	buffer[n] = '\0';
+						 	ptr = buffer;
+					 		int len = 0;
+					 		while((n = recv(s, ptr, strlen(buffer), 0)) > 0)
+					 		{		
+						 		ptr += n;
+					 			len += n;
+					 		}
+					 		buffer[len] = '\0';
 						 	printf("\nData received from the server is %s", buffer);
 					 	}
 					 }
