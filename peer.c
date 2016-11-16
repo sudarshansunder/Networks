@@ -30,7 +30,7 @@ void downloadFiles(char buffer[], int len, char fileName[])
 		memset(&peerAddr, 0, sizeof(peerAddr));
 		peerAddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ips[i], &peerAddr.sin_addr);
-		peerAddr.sin_port = 4002;
+		peerAddr.sin_port = 4014;
 		if((s = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 		{
 			perror("\nError : Socket creation failed");
@@ -44,7 +44,7 @@ void downloadFiles(char buffer[], int len, char fileName[])
 		}
 
 		char sendData[50];
-		sendData[0] = '0' + num;
+		sendData[0] = '0' + (num-1);
 		sendData[1] = '#';
 		sendData[2] = i + '0';
 		sendData[3] = '#';
@@ -52,10 +52,10 @@ void downloadFiles(char buffer[], int len, char fileName[])
 		strcat(sendData, fileName);
 		printf("\nData send to peer is %s", sendData);
 		send(s, sendData, strlen(sendData), 0);
-		int n = recv(s, data, 50, 0);
+		int n = recv(s, data, strlen(data) + 200, 0);
 		data[n] = '\0';
 		write(fd, data, strlen(data));
-		break;
+		close(s);
 	}
 }
 
@@ -73,8 +73,8 @@ void Server()
 	
 	memset(&servAddr, 0, sizeof(servAddr));
 	servAddr.sin_family = AF_INET;
-	servAddr.sin_addr.s_addr = inet_addr("192.168.43.134");
-	servAddr.sin_port = 4002;
+	servAddr.sin_addr.s_addr = inet_addr("192.168.43.190");
+	servAddr.sin_port = 4014;
 	
 	if((ls = socket(PF_INET, SOCK_STREAM, 0)) < 0)
 	{
@@ -118,7 +118,9 @@ void Server()
 		{
 			printf("%s ", strs[i]);
 		}
+
 		fflush(stdout);
+
 		int fd = open(fileName, 2);
 
 		if(fd == -1)
@@ -127,18 +129,34 @@ void Server()
 			exit(0);
 		}
 
-		n = read(fd, buffer, 50);
-		int bpp = n/tot;
-		
-		int fp = bpp * (part - 1);
-
-		//lseek(fd, fp, 0);
+		n = read(fd, buffer, 200);
+		int bpp = n/tot;		
+		int fp = bpp * (part);
 
 		buffer[n] = '\0';
 
-		printf("\nValue of buffer is %s", buffer);
+		printf("\nBuffer is %s", buffer);		
 
-		send(s, buffer, n, 0);
+		printf("\nn = %d bpp = %d fp = %d tot = %d part = %d", n, bpp, fp, tot, part);
+		
+
+		fflush(stdout);
+
+		char str[200];
+		int j=0;
+
+
+		for(i=fp;i<fp+bpp;i++,j++)
+			str[j] = buffer[i];
+
+		str[j+1] = '\0';
+
+			
+		printf("\nValue of buffer %s", str);
+
+		fflush(stdout);			
+		
+		send(s, str, j, 0);
 
 		close(s);
 	}
