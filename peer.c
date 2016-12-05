@@ -108,12 +108,11 @@ void Server()
 		char **strs = str_split(buffer, '#');
 
 		int tot = strs[0][0] - '0';
-		int part = strs[1][0] - '1';
+		int part = strs[1][0] - '1'; //Assume single digit numbers
 		char fileName[20];
 		strcpy(fileName, strs[2]);
 
 		int i;
-		printf("\nPeer server received : ");
 		for(i=0;i<3;i++)
 		{
 			printf("%s ", strs[i]);
@@ -139,25 +138,17 @@ void Server()
 
 		printf("\nn = %d bpp = %d fp = %d tot = %d part = %d", n, bpp, fp, tot, part);
 		
-
 		fflush(stdout);
 
 		char str[200];
 		int j=0;
-
-
 		for(i=fp;i<fp+bpp;i++,j++)
 			str[j] = buffer[i];
 
-		str[j+1] = '\0';
-
-			
+		str[j+1] = '\0';		
 		printf("\nValue of buffer %s", str);
-
 		fflush(stdout);			
-		
 		send(s, str, j, 0);
-
 		close(s);
 	}
 }
@@ -229,7 +220,7 @@ void Client()
 					 }
 					 else
 					 {
-					 	printf("\nAlready logged in bruv");
+					 	printf("\nAlready logged in!");
 					 }
 					 close(s);
 					 break;
@@ -252,7 +243,6 @@ void Client()
 					 	}
 					 	else
 					 	{
-					 		//TODO Code to receive files using fragments
 					 		downloadFiles(buffer, len, string);
 					 	}
 					 }
@@ -283,12 +273,6 @@ void Client()
 						 	ptr = buffer;
 					 		n = recv(s, ptr, strlen(buffer)+1, 0);
 					 		buffer[n] = '\0';
-						 	if(strcmp(buffer, "Ne") == 0)
-						 	{
-						 		printf("\nData received from the server is %s", buffer);
-						 		
-						 	}
-						 	
 							fflush(stdout);
 					 	}
 					 }

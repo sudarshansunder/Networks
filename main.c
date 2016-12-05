@@ -1,3 +1,8 @@
+
+//Peer to peer file sharing system. Basically, we're making utorrent lel.
+//For our CN lab project
+//Oh and it uses socket programming. Primitive af
+
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -20,8 +25,40 @@ typedef struct Host1
 } Host;
 
 
-Host *head[20];
+Host *head[20]; //Too lazy to pass everytime as a parameter lel
 int *size;
+
+int saveHostsOnExit() //Signal handler for when process dies
+{
+	FILE *fd = fopen("hosts.dat", "w");
+	if(fd == -1)
+	{
+		perror("\nFile cannot be opened");
+		return 0;
+	}
+	int i;
+	for(i=0;i<*size;i++)
+		fwrite(head[i], sizeof(Host), 1, fd);
+	return 1;
+}
+
+void getHostsOnStart()
+{
+	FILE* fd = fopen("hosts.dat", "r");
+	if(fd == -1)
+	{
+		perror("\nFile cannot be opened");
+		return 0;
+	}
+	int n;
+	*size = 0;
+	while(1)
+	{
+		int num = fread(head[*size], sizeof(head), 1, fd);
+		if(num < 1)
+			break;
+	}
+}
 
 void host_insert(char ipAddress[], char macAddress[], char files[][20], int n)
 {
@@ -85,6 +122,12 @@ void printList()
 	fflush(stdout);
 }
 
+char*  getMacAddress()
+{
+	//Temporary
+	return "00:00:00:00:00:00";
+}
+
 int loginUser(char buffer[], int n, char pwd[])
 {
 	int i;
@@ -137,7 +180,7 @@ void listFile(char buffer[], int n, char clientIp[], char msg[])
 	{
 		char files[20][20]; //Temporary
 		strcpy(files[0], fileName);
-		host_insert(clientIp, "temporary mac", files, 1);
+		host_insert(clientIp, getMacAddress(), files, 1);
 		strcpy(msg, "New host created and file added");
 	}
 	
@@ -145,20 +188,19 @@ void listFile(char buffer[], int n, char clientIp[], char msg[])
 
 int main()
 {	
-	size = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, 
-                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+	size = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
     int i;
     for(i=0;i<20;i++)
-    	head[i] = mmap(NULL, sizeof(Host), PROT_READ | PROT_WRITE, 
-                    MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    	head[i] = mmap(NULL, sizeof(Host), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
 	int ls, s;
+	getHostsOnStart();
 	char buffer[256];
 	char *ptr = buffer;
 	int len = 0;
 	int maxlen = sizeof(buffer);
 	int n = 0;
 	int waitSize = 16;
-	char *pwd = "jockey";
+	char *pwd = "terimaarandi";
 	struct sockaddr_in servAddr, clntAddr;
 	int clntAddrLen;
 	memset(&servAddr, 0, sizeof(servAddr));
@@ -184,63 +226,62 @@ int main()
 		exit(1);
 	}
 	
-	while(1){
-		
-		
-			if((s = accept(ls, (struct sockaddr*)&clntAddr, &clntAddrLen)) < 0)
+	while(1)
+	{
+		if((s = accept(ls, (struct sockaddr*)&clntAddr, &clntAddrLen)) < 0)
+		{
+			perror("Error : Accepting failed");
+			exit(1);
+		}
+		if(fork() == 0)	
+		{
+			n =	recv(s, ptr, maxlen, 0);
+			buffer[n] = '\0';
+			printf("\nReceived from client : %s", buffer);
+			fflush(stdout);	
+			char clientAddr[INET_ADDRSTRLEN];
+			inet_ntop(AF_INET, &(clntAddr.sin_addr), clientAddr, INET_ADDRSTRLEN);
+			printf("\nClient's address is %s", clientAddr);
+			fflush(stdout);
+			int auth;
+			char sendData[100], msg[20];
+			switch(buffer[0])
 			{
-				perror("Error : Accepting failed");
-				exit(1);
-			}
-			if(fork() == 0)	
-			{
-				n =	recv(s, ptr, maxlen, 0);
-				buffer[n] = '\0';
-				printf("\nReceived from client : %s", buffer);
-				fflush(stdout);	
-				char clientAddr[INET_ADDRSTRLEN];
-				inet_ntop(AF_INET, &(clntAddr.sin_addr), clientAddr, INET_ADDRSTRLEN);
-				printf("\nClient's address is %s", clientAddr);
-				fflush(stdout);
-				int auth;
-				char sendData[100], msg[20];
-				switch(buffer[0])
-				{
-					case '1' : auth = loginUser(buffer, n, pwd);
-							   char res[10];
-							   if(auth)
-							   {
-							   		strcpy(res, "1");
-							   } 
-							   else
-							   {
-							   		strcpy(res, "0");
-							   }
-							   int si = send(s, res, strlen(res), 0);
-							   printf("\nData send to %s is %s", clientAddr, res);
-							   printf("\nSize of data is %d", si);
-							   fflush(stdout);
-							   close(s);
-							   break;
-					case '2' : downloadFile(buffer, n, sendData);
-								printf("\nData send to %s is %s", clientAddr, sendData);
-								fflush(stdout);
-							   send(s, sendData, strlen(sendData), 0);
-							   close(s);
-							   break;
-					case '3' : listFile(buffer, n, clientAddr, msg);
-							   printList(head, size);
-							   printf("\nData send to %s is %s", clientAddr, res);
-							   fflush(stdout);
-							   send(s, msg, strlen(msg), 0);
-							   close(s);
-							   break;
+				case '1' : auth = loginUser(buffer, n, pwd);
+						   char res[10];
+						   if(auth)
+						   {
+						   		strcpy(res, "1");
+						   } 
+						   else
+						   {
+						   		strcpy(res, "0");
+						   }
+						   int si = send(s, res, strlen(res), 0);
+						   printf("\nData send to %s is %s", clientAddr, res);
+						   printf("\nSize of data is %d", si);
+						   fflush(stdout);
+						   close(s);
+						   break;
+				case '2' : downloadFile(buffer, n, sendData);
+							printf("\nData send to %s is %s", clientAddr, sendData);
+							fflush(stdout);
+						   send(s, sendData, strlen(sendData), 0);
+						   close(s);
+						   break;
+				case '3' : listFile(buffer, n, clientAddr, msg);
+						   printList(head, size);
+						   printf("\nData send to %s is %s", clientAddr, res);
+						   fflush(stdout);
+						   send(s, msg, strlen(msg), 0);
+						   close(s);
+						   break;
 
-				}
-				printf("\n");
-				fflush(stdout);
-				//exit(0);
 			}
+			printf("\n");
+			fflush(stdout);
+			exit(0);
 		}
-		}
+	}
+}
 
